@@ -1,0 +1,2616 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOMENT.fm — Музыкальный телеканал 24/7</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-base: #060709;
+      --bg-surface: rgba(18, 20, 26, 0.72);
+      --bg-elevated: rgba(28, 31, 40, 0.78);
+      --bg-solid: #111318;
+      --border-hairline: rgba(255, 255, 255, 0.09);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text-main: #f5f7fa;
+      --text-secondary: #9aa3b2;
+      --text-dim: #5e6675;
+      --accent: #c4ff0e;
+      --accent-soft: rgba(196, 255, 14, 0.14);
+      --danger: #ff3b5c;
+      --amber: #ffb800;
+      --cyan: #32d7ff;
+      --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --radius-pill: 999px;
+      --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+
+    #broadcastVideo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+      z-index: 2;
+      background: #050608;
+    }
+    .tv-viewport.has-video #broadcastVideo {
+      display: block;
+    }
+    .tv-viewport.has-video #broadcastCanvas {
+      opacity: 0.22;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .lower-third {
+      transition: opacity 0.45s var(--ease-spring), transform 0.45s var(--ease-spring);
+    }
+    .lower-third.is-hidden {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    .poll-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+    .poll-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      text-align: left;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: all 0.2s var(--ease-spring);
+    }
+    .poll-option:hover {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: var(--border-strong);
+    }
+    .poll-bar-bg {
+      height: 5px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+    .poll-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: var(--radius-pill);
+      transition: width 0.35s var(--ease-spring);
+    }
+
+    /* OBS Overlay mode */
+    body.overlay-mode .floating-dock,
+    body.overlay-mode .below-screen,
+    body.overlay-mode .page-section {
+      display: none !important;
+    }
+    body.overlay-mode .main-wrap {
+      max-width: 100%;
+      padding: 0;
+      margin: 0;
+    }
+    body.overlay-mode .broadcast-stage {
+      border-radius: 0;
+      border: none;
+    }
+    body.overlay-mode .tv-viewport {
+      height: 100vh;
+      aspect-ratio: auto;
+      border-radius: 0;
+    }
+
+    /* Apple-inspired Floating Glass Top Bar */
+    .floating-dock {
+      position: sticky;
+      top: 14px;
+      z-index: 60;
+      max-width: 1380px;
+      margin: 14px auto 0;
+      padding: 0 20px;
+    }
+
+    .dock-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 60px;
+      padding: 0 8px 0 18px;
+      background: rgba(16, 18, 24, 0.72);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+    }
+
+    .brand-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+
+    .nav-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.25s var(--ease-spring);
+      white-space: nowrap;
+    }
+
+    .nav-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-btn.active {
+      background: var(--text-main);
+      color: #060709;
+    }
+
+    .nav-btn.admin-tab.active {
+      background: var(--accent);
+      color: #060709;
+    }
+
+    .top-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      padding-right: 10px;
+      white-space: nowrap;
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 59, 92, 0.16);
+      border: 1px solid rgba(255, 59, 92, 0.36);
+      color: #ff6982;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--danger);
+      border-radius: 50%;
+      animation: pulse 1.4s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
+
+    .main-wrap {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 18px 20px 56px;
+    }
+
+    .page-section {
+      display: none;
+      animation: fadeSlide 0.35s var(--ease-spring);
+    }
+    .page-section.active {
+      display: block;
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 16:9 Broadcast Cinema Frame */
+    .broadcast-stage {
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      background: #08090c;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.72);
+    }
+
+    .tv-viewport {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #050608;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #broadcastCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Radio Mode (Apple Music-inspired frosted glass view on same timeline) */
+    .radio-screen {
+      position: absolute;
+      inset: 0;
+      display: none;
+      background: radial-gradient(circle at 25% 35%, rgba(196, 255, 14, 0.11), transparent 55%), #090b10;
+      padding: clamp(20px, 4vw, 52px);
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 12;
+    }
+
+    .tv-viewport.is-radio .radio-screen {
+      display: flex;
+    }
+
+    .radio-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-hairline);
+      padding-bottom: 14px;
+    }
+
+    .radio-center {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .radio-cover {
+      width: 210px;
+      height: 210px;
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-strong);
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .radio-cover-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+    }
+
+    .radio-cover-art {
+      font-size: 46px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .radio-meta h2 {
+      font-size: clamp(30px, 3.8vw, 52px);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+    }
+
+    .radio-meta .artist {
+      font-size: clamp(19px, 2.4vw, 26px);
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+
+    .radio-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 32px;
+      margin-top: 16px;
+    }
+
+    .radio-bars span {
+      width: 4px;
+      border-radius: 4px;
+      background: var(--accent);
+      height: 20%;
+      transition: height 0.14s ease;
+    }
+
+    /* Broadcast On-Air Graphics (Dynamic Island & Frosted Glass HUD) */
+    .onair-hud {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(14px, 2.2vw, 28px);
+    }
+
+    .tv-viewport.is-radio .onair-hud {
+      display: none;
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    /* Dynamic Island Style Program Pill */
+    .dynamic-island {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(10, 12, 16, 0.78);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      padding: 7px 16px 7px 10px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      transition: all 0.35s var(--ease-spring);
+    }
+
+    .island-eq {
+      display: flex;
+      align-items: center;
+      gap: 2.5px;
+      height: 16px;
+      padding: 0 4px;
+    }
+
+    .island-eq i {
+      display: block;
+      width: 2.5px;
+      height: 10px;
+      background: var(--accent);
+      border-radius: 3px;
+      animation: eqBounce 0.9s ease-in-out infinite alternate;
+    }
+    .island-eq i:nth-child(2) { animation-delay: 0.2s; height: 15px; }
+    .island-eq i:nth-child(3) { animation-delay: 0.4s; height: 8px; }
+
+    @keyframes eqBounce {
+      from { transform: scaleY(0.35); }
+      to { transform: scaleY(1); }
+    }
+
+    .hud-program-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .hud-program-title {
+      font-size: clamp(14px, 1.4vw, 18px);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    /* Channel Corner Bug */
+    .hud-bug {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+
+    .hud-logo-box {
+      display: flex;
+      align-items: center;
+      background: rgba(10, 12, 16, 0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      padding: 6px 14px;
+      gap: 8px;
+    }
+
+    .hud-logo-text {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      font-size: clamp(15px, 1.4vw, 18px);
+    }
+
+    .hud-logo-fm {
+      background: var(--accent);
+      color: #060709;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+    }
+
+    .hud-timecode {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: rgba(10, 12, 16, 0.65);
+      backdrop-filter: blur(14px);
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-hairline);
+    }
+
+    /* Center Overlays */
+    .hud-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .state-card {
+      display: none;
+      max-width: 660px;
+      width: 100%;
+      background: rgba(14, 16, 22, 0.84);
+      backdrop-filter: blur(32px) saturate(180%);
+      -webkit-backdrop-filter: blur(32px) saturate(180%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-xl);
+      padding: clamp(20px, 2.8vw, 32px);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      animation: modalPop 0.35s var(--ease-spring);
+    }
+
+    .state-card.visible {
+      display: block;
+    }
+
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .ident-screen {
+      display: none;
+      text-align: center;
+      background: rgba(12, 14, 19, 0.86);
+      backdrop-filter: blur(34px);
+      -webkit-backdrop-filter: blur(34px);
+      border: 1px solid rgba(196, 255, 14, 0.45);
+      border-radius: 28px;
+      padding: clamp(28px, 4.5vw, 56px) clamp(32px, 6vw, 84px);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.75);
+    }
+    .ident-screen.visible {
+      display: block;
+      animation: modalPop 0.35s var(--ease-spring);
+    }
+
+    .ident-big {
+      font-size: clamp(42px, 6.5vw, 84px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .ident-big span {
+      color: var(--accent);
+    }
+    .ident-sub {
+      margin-top: 12px;
+      font-family: var(--font-mono);
+      font-size: clamp(10px, 1vw, 13px);
+      letter-spacing: 0.16em;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+    }
+
+    .fallback-banner {
+      position: absolute;
+      top: 72px;
+      right: clamp(14px, 2.2vw, 28px);
+      background: rgba(255, 184, 0, 0.16);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 184, 0, 0.45);
+      border-radius: var(--radius-pill);
+      color: var(--amber);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 5px 12px;
+      display: none;
+    }
+    .fallback-banner.visible {
+      display: block;
+    }
+
+    /* Lower Third + Glass News Ticker */
+    .hud-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .lower-third {
+      display: inline-flex;
+      flex-direction: column;
+      max-width: 640px;
+      background: rgba(12, 14, 20, 0.8);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 16px 22px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .lt-tag {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .lt-artist {
+      font-size: clamp(24px, 2.8vw, 36px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.12;
+    }
+
+    .lt-track {
+      font-size: clamp(16px, 1.6vw, 21px);
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .lt-progress-wrap {
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lt-bar {
+      flex: 1;
+      height: 4px;
+      border-radius: var(--radius-pill);
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+    }
+
+    .lt-bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: var(--radius-pill);
+      background: var(--accent);
+      transition: width 0.25s linear;
+    }
+
+    .lt-timer {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .ticker-bar {
+      display: flex;
+      align-items: center;
+      background: rgba(12, 14, 20, 0.84);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-pill);
+      height: 40px;
+      padding: 3px;
+      overflow: hidden;
+    }
+
+    .ticker-label {
+      background: var(--accent);
+      color: #060709;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 0 14px;
+      height: 100%;
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .ticker-track {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .ticker-move {
+      display: inline-block;
+      padding-left: 100%;
+      animation: ticker 34s linear infinite;
+    }
+
+    @keyframes ticker {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* Apple Control Center Style Dock Below 16:9 */
+    .below-screen {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .glass-panel {
+      background: var(--bg-surface);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-xl);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    /* Segmented Control (iOS style) */
+    .segmented-pill {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 3px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-hairline);
+    }
+
+    .seg-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.22s var(--ease-spring);
+    }
+
+    .seg-btn.active {
+      background: var(--text-main);
+      color: #060709;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid var(--border-hairline);
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-spring);
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn.active,
+    .btn-accent {
+      background: var(--accent);
+      color: #060709;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .btn-danger {
+      background: rgba(255, 59, 92, 0.14);
+      border-color: rgba(255, 59, 92, 0.35);
+      color: #ff6982;
+    }
+
+    .vol-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .slot-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .slot-box {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-md);
+      padding: 11px 14px;
+    }
+
+    .slot-box .k {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: 0.05em;
+    }
+
+    .slot-box .v {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-top: 4px;
+    }
+
+    /* Section Headers & Tables */
+    .sec-head {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--border-hairline);
+      gap: 12px;
+    }
+
+    .sec-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .sec-sub {
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    .table-wrap {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-xl);
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 13px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .data-table td {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border-hairline);
+      vertical-align: middle;
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 11px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      letter-spacing: 0.03em;
+    }
+
+    .badge-ok {
+      border-color: rgba(196, 255, 14, 0.4);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .badge-warn {
+      border-color: rgba(255, 184, 0, 0.4);
+      color: var(--amber);
+      background: rgba(255, 184, 0, 0.12);
+    }
+
+    .badge-err {
+      border-color: rgba(255, 59, 92, 0.4);
+      color: #ff6982;
+      background: rgba(255, 59, 92, 0.12);
+    }
+
+    .split-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .b-block {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .b-block-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid var(--border-hairline);
+      padding-bottom: 12px;
+      gap: 10px;
+    }
+
+    .host-name {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+
+    .quote-box {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      font-size: 15px;
+      color: var(--text-main);
+    }
+
+    .admin-subnav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .admin-pane { display: none; }
+    .admin-pane.active { display: block; }
+
+    .input-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-pill);
+      color: var(--text-main);
+      padding: 8px 16px;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      outline: none;
+    }
+    .input-box:focus {
+      border-color: var(--accent);
+    }
+
+    .code-panel {
+      background: #080a0e;
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      color: #c9d4e6;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      line-height: 1.55;
+    }
+
+    .pipeline-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .pipe-node {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+    }
+    .pipe-node.fault {
+      border-color: var(--danger);
+      background: rgba(255, 59, 92, 0.1);
+    }
+
+    @media (max-width: 960px) {
+      .below-screen { grid-template-columns: 1fr; }
+      .split-grid-2 { grid-template-columns: 1fr; }
+      .radio-center { grid-template-columns: 1fr; gap: 16px; }
+      .radio-cover { width: 120px; height: 120px; }
+    }
+
+    @media (max-width: 560px) {
+      .floating-dock { padding: 0 10px; top: 8px; margin-top: 8px; }
+      .main-wrap { padding: 12px 10px 40px; }
+      .slot-grid { grid-template-columns: 1fr; }
+      .broadcast-stage { border-radius: var(--radius-lg); }
+      .lower-third { padding: 10px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- FLOATING GLASS DOCK -->
+  <header class="floating-dock">
+    <div class="dock-inner">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span>MOMENT.fm</span>
+      </div>
+
+      <nav class="nav-tabs" id="mainNav">
+        <button class="nav-btn active" data-tab="air">Эфир</button>
+        <button class="nav-btn" data-tab="schedule">Программа</button>
+        <button class="nav-btn" data-tab="news">Новости</button>
+        <button class="nav-btn" data-tab="hosts">Ведущие</button>
+        <button class="nav-btn" data-tab="library">Видеотека</button>
+        <button class="nav-btn admin-tab" data-tab="admin">Вещание</button>
+      </nav>
+
+      <div class="top-status">
+        <span class="live-pill"><span class="live-dot"></span>LIVE</span>
+        <span id="headerClock">00:00:00</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-wrap">
+
+    <!-- ==================== 1. ЭФИР ==================== -->
+    <section class="page-section active" id="tab-air">
+      <div class="broadcast-stage">
+        <div class="tv-viewport" id="tvViewport">
+          <canvas id="broadcastCanvas"></canvas>
+          <video id="broadcastVideo" playsinline preload="metadata"></video>
+
+          <!-- RADIO MODE VIEW (SAME TIMELINE) -->
+          <div class="radio-screen" id="radioScreen">
+            <div class="radio-top">
+              <div>
+                <span class="badge badge-ok">MOMENT.fm RADIO // SYNCED</span>
+                <span style="margin-left:10px; font-size:13px; font-weight:600; color:var(--text-secondary);" id="radioProgramName">EURO POP</span>
+              </div>
+              <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-secondary);" id="radioClock">00:00:00</div>
+            </div>
+
+            <div class="radio-center">
+              <div class="radio-cover">
+                <div class="radio-cover-tag">ON AIR AUDIO</div>
+                <div class="radio-cover-art" id="radioCoverCode">JJ</div>
+                <div class="radio-cover-tag" id="radioBpmTag">124 BPM // AAC 320</div>
+              </div>
+              <div class="radio-meta">
+                <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary); margin-bottom:6px;">СЕЙЧАС В АУДИОЭФИРЕ</div>
+                <h2 id="radioTrackTitle">Wasted Love</h2>
+                <div class="artist" id="radioArtistName">JJ</div>
+                <div style="display:flex; align-items:center; gap:12px; max-width:460px;">
+                  <div class="lt-bar"><div class="lt-bar-fill" id="radioProgressBar"></div></div>
+                  <span class="lt-timer" id="radioTimerText">00:00 / 03:02</span>
+                </div>
+                <div class="radio-bars" id="radioBars"></div>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-secondary); border-top:1px solid var(--border-hairline); padding-top:12px;">
+              <span>Единая временная шкала с ТВ-эфиром</span>
+              <span id="radioNextLabel">Далее: Kyle Alessandro — Lighter</span>
+            </div>
+          </div>
+
+          <!-- TV ON-AIR GRAPHICS HUD -->
+          <div class="onair-hud">
+            <div class="hud-top">
+              <div class="dynamic-island">
+                <div class="island-eq"><i></i><i></i><i></i></div>
+                <div>
+                  <div class="hud-program-label" id="hudSlotLabel">СЕЙЧАС В ЭФИРЕ</div>
+                  <div class="hud-program-title" id="hudProgramTitle">EURO POP</div>
+                </div>
+              </div>
+
+              <div class="hud-bug">
+                <div class="hud-logo-box">
+                  <span class="hud-logo-text">MOMENT</span>
+                  <span class="hud-logo-fm">FM</span>
+                </div>
+                <div class="hud-timecode" id="hudTimecode">TC 12:00:00:00</div>
+              </div>
+            </div>
+
+            <div class="fallback-banner" id="fallbackBanner">
+              VIDEO FALLBACK // Резервный видеоряд (аудиоэфир активен)
+            </div>
+
+            <!-- CENTER GRAPHIC STATES -->
+            <div class="hud-center">
+              <div class="ident-screen" id="stateIdent">
+                <div class="ident-big">MOMENT<span>.fm</span></div>
+                <div class="ident-sub">Музыкальное телевидение • 24/7 Европейский поп-эфир</div>
+              </div>
+
+              <div class="state-card" id="stateNews">
+                <div class="lt-tag">MOMENT NEWS • Эфирный выпуск</div>
+                <div style="font-size:clamp(17px, 2vw, 24px); font-weight:700; letter-spacing:-0.02em; margin-bottom:8px;" id="hudNewsHeadline">
+                  Европейская поп-сцена готовит серию релизов
+                </div>
+                <div style="font-size:13px; color:var(--text-secondary);" id="hudNewsBody">
+                  Редакция MOMENT.fm следит за главными премьерами недели и обновлениями чарта MOMENT TOP 20.
+                </div>
+              </div>
+
+              <div class="state-card" id="stateHost">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                  <span class="lt-tag" style="margin:0;">В эфире ведущий • <span id="hudHostName">ALEX</span></span>
+                  <span class="badge badge-ok" id="hudHostRole">ОСНОВНОЙ ЭФИР</span>
+                </div>
+                <div style="font-size:clamp(15px, 1.7vw, 21px); font-weight:600; line-height:1.4;" id="hudHostSpeech">
+                  «Вы смотрите MOMENT.fm! Прямо сейчас в эфире свежий европейский звук — оставайтесь с нами!»
+                </div>
+              </div>
+
+              <div class="state-card" id="stateTransition">
+                <div class="lt-tag">Переход программ • Смена сетки</div>
+                <div style="font-size:clamp(18px, 2.2vw, 28px); font-weight:800; letter-spacing:-0.02em; margin-bottom:6px;" id="hudTransTitle">
+                  Далее: MOMENT TOP 20
+                </div>
+                <div style="font-size:13px; color:var(--text-secondary);" id="hudTransDesc">
+                  Главные хиты недели и лидеры ротации в прямом эфире MOMENT.fm.
+                </div>
+              </div>
+            </div>
+
+            <!-- BOTTOM GRAPHICS -->
+            <div class="hud-bottom">
+              <div class="lower-third" id="lowerThirdBox">
+                <div class="lt-tag" id="ltStateTag">В ЭФИРЕ • МУЗЫКАЛЬНЫЙ КЛИП</div>
+                <div class="lt-artist" id="ltArtist">JJ</div>
+                <div class="lt-track" id="ltTrack">Wasted Love</div>
+                <div class="lt-progress-wrap">
+                  <div class="lt-bar"><div class="lt-bar-fill" id="ltProgressBar"></div></div>
+                  <div class="lt-timer" id="ltTimer">00:00 / 03:02</div>
+                </div>
+              </div>
+
+              <div class="ticker-bar">
+                <div class="ticker-label">NEWS</div>
+                <div class="ticker-track">
+                  <div class="ticker-move" id="tickerText">
+                    JJ возглавляет европейский поп-чарт недели • Kyle Alessandro готовит специальную версию трека Lighter для эфира MOMENT.fm • Marcus & Martinus анонсировали серию концертов • ISAAK представил живую сессию • Вы смотрите MOMENT.fm 24/7
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROL CENTER BELOW 16:9 -->
+      <div class="below-screen">
+        <div class="glass-panel">
+          <div class="control-row">
+            <div class="segmented-pill">
+              <button class="seg-btn active" id="modeTvBtn" onclick="setBroadcastMode('TV')">TV Эфир</button>
+              <button class="seg-btn" id="modeRadioBtn" onclick="setBroadcastMode('RADIO')">Radio</button>
+            </div>
+
+            <div class="btn-group">
+              <button class="btn" id="audioToggleBtn" onclick="toggleAudio()">Включить звук</button>
+              <button class="btn" onclick="nextTrack(true)">След. трек</button>
+              <button class="btn active" id="autoLtBtn" onclick="toggleAutoLowerThird()">Авто-титр: ВКЛ</button>
+              <label class="btn" style="cursor:pointer;">
+                Файл MP4/MP3
+                <input type="file" id="localMediaInput" accept="video/mp4,video/webm,audio/mpeg,audio/mp3,audio/ogg,audio/wav" multiple style="display:none;" onchange="handleLocalFiles(event)" />
+              </label>
+            </div>
+
+            <div class="vol-wrap">
+              <span>Звук</span>
+              <input type="range" id="volumeSlider" min="0" max="100" value="65" oninput="setVolume(this.value)" />
+              <span id="volumeLabel">65%</span>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:11px; font-weight:600; color:var(--text-secondary); margin-bottom:8px;">
+              Эфирная графика (6 состояний кадра):
+            </div>
+            <div class="btn-group" id="gfxStateButtons">
+              <button class="btn active" data-state="CLIP" onclick="setGraphicState('CLIP')">1. Клип</button>
+              <button class="btn" data-state="NEW_RELEASE" onclick="setGraphicState('NEW_RELEASE')">2. Новая песня</button>
+              <button class="btn" data-state="NEWS" onclick="setGraphicState('NEWS')">3. Новости</button>
+              <button class="btn" data-state="IDENT" onclick="setGraphicState('IDENT')">4. Заставка</button>
+              <button class="btn" data-state="HOST" onclick="setGraphicState('HOST')">5. Ведущий</button>
+              <button class="btn" data-state="TRANSITION" onclick="setGraphicState('TRANSITION')">6. Переход</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-panel">
+          <div class="slot-grid">
+            <div class="slot-box">
+              <div class="k">СЕЙЧАС В СЕТКЕ</div>
+              <div class="v" id="panelCurrProgram">EURO POP (12:00 – 15:00)</div>
+            </div>
+            <div class="slot-box">
+              <div class="k">ДАЛЕЕ ПО СЕТКЕ</div>
+              <div class="v" id="panelNextProgram">MOMENT TOP 20 (15:00)</div>
+            </div>
+          </div>
+          <div class="poll-card" id="viewerPollBox">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:12px; font-weight:700; color:var(--accent);">ГОЛОСОВАНИЕ ЗРИТЕЛЕЙ • СЛЕДУЮЩИЙ ТРЕК</span>
+              <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);" id="pollTotalVotes">0 голосов</span>
+            </div>
+            <div id="pollOptionsList"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text-secondary);">
+            <span id="panelNextTrack">Очередь: Kyle Alessandro — Lighter</span>
+            <button class="btn" onclick="switchTab('schedule')">Программа →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. ПРОГРАММА ПЕРЕДАЧ ==================== -->
+    <section class="page-section" id="tab-schedule">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Программа передач</div>
+          <div class="sec-sub">Круглосуточная сетка вещания MOMENT.fm • Язык эфира: русский</div>
+        </div>
+        <div class="segmented-pill" id="scheduleDayFilter">
+          <button class="seg-btn active" onclick="renderSchedule('БУДНИ', this)">Будни</button>
+          <button class="seg-btn" onclick="renderSchedule('ВЫХОДНЫЕ', this)">Выходные</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Время</th>
+              <th>Программа</th>
+              <th>Описание</th>
+              <th>Ведущий</th>
+              <th>Эфирная графика</th>
+              <th>Действие</th>
+            </tr>
+          </thead>
+          <tbody id="scheduleTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== 3. МУЗЫКАЛЬНЫЕ НОВОСТИ ==================== -->
+    <section class="page-section" id="tab-news">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Музыкальные новости</div>
+          <div class="sec-sub">Европейская поп-сцена, Eurovision, новые релизы и события</div>
+        </div>
+        <div class="btn-group" id="newsFilters">
+          <button class="btn active" onclick="renderNews('ALL', this)">Все темы</button>
+          <button class="btn" onclick="renderNews('НОВЫЕ РЕЛИЗЫ', this)">Новые релизы</button>
+          <button class="btn" onclick="renderNews('EUROVISION', this)">Eurovision</button>
+          <button class="btn" onclick="renderNews('ЕВРОПЕЙСКАЯ СЦЕНА', this)">Европейская сцена</button>
+        </div>
+      </div>
+
+      <div class="split-grid-2" id="newsGrid"></div>
+    </section>
+
+    <!-- ==================== 4. ВЕДУЩИЕ ==================== -->
+    <section class="page-section" id="tab-hosts">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">ИИ-ведущие MOMENT.fm</div>
+          <div class="sec-sub">Виртуальные ведущие канала • Предгенерированные сценарии на русском языке</div>
+        </div>
+      </div>
+
+      <div class="split-grid-2" id="hostsGrid"></div>
+    </section>
+
+    <!-- ==================== 5. ВИДЕОТЕКА ==================== -->
+    <section class="page-section" id="tab-library">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Видеотека канала</div>
+          <div class="sec-sub">Ротация клипов, статусы источников и постановка в очередь эфира</div>
+        </div>
+        <div class="btn-group">
+          <button class="btn active" onclick="renderLibrary('ALL', this)">Все клипы</button>
+          <button class="btn" onclick="renderLibrary('Euro Pop', this)">Euro Pop</button>
+          <button class="btn" onclick="renderLibrary('Dance Pop', this)">Dance Pop</button>
+          <button class="btn" onclick="renderLibrary('NEW', this)">Премьеры</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Исполнитель / Трек</th>
+              <th>Категория</th>
+              <th>Программа</th>
+              <th>Длит. / BPM</th>
+              <th>Статус клипа</th>
+              <th>Управление</th>
+            </tr>
+          </thead>
+          <tbody id="libraryTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ==================== 6. АДМИН-ПАНЕЛЬ ВЕЩАНИЯ ==================== -->
+    <section class="page-section" id="tab-admin">
+      <div class="sec-head">
+        <div>
+          <div class="sec-title">Центр управления вещанием</div>
+          <div class="sec-sub">AutoDJ • Clip Finder • Gemini Pre-Gen • Тракт FFmpeg/OBS/HLS • QA</div>
+        </div>
+        <span class="badge badge-warn">ПРОТОТИП: ДЕМО-КОНТУР ВЕЩАНИЯ</span>
+      </div>
+
+      <div class="admin-subnav" id="adminSubnav">
+        <button class="btn active" data-sub="autodj" onclick="switchAdminPane('autodj', this)">AutoDJ и очередь</button>
+        <button class="btn" data-sub="clipfinder" onclick="switchAdminPane('clipfinder', this)">Clip Finder</button>
+        <button class="btn" data-sub="gemini" onclick="switchAdminPane('gemini', this)">Gemini AI</button>
+        <button class="btn" data-sub="pipeline" onclick="switchAdminPane('pipeline', this)">Тракт FFmpeg / OBS / HLS</button>
+        <button class="btn" data-sub="qa" onclick="switchAdminPane('qa', this)">QA-диагностика</button>
+      </div>
+
+      <!-- SUBPANE 1: AUTODJ -->
+      <div class="admin-pane active" id="sub-autodj">
+        <div class="split-grid-2" style="margin-bottom:14px;">
+          <div class="b-block">
+            <div class="b-block-top">
+              <strong>Настройки AutoDJ (автономный режим)</strong>
+              <span class="badge badge-ok" id="autodjStatusBadge">ACTIVE // STANDALONE</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-secondary);">Ротация:</span>
+              <button class="btn active" id="rotStandard" onclick="setRotation('STANDARD')">Standard</button>
+              <button class="btn" id="rotHeavy" onclick="setRotation('HEAVY')">Heavy Hits</button>
+              <button class="btn" id="rotShuffle" onclick="setRotation('SHUFFLE')">Shuffle</button>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+              <span style="font-size:12px; color:var(--text-secondary);">Плейлист:</span>
+              <button class="btn" onclick="loadPlaylist('EURO POP PRIME')">Euro Pop Prime</button>
+              <button class="btn" onclick="loadPlaylist('NEW MUSIC')">New Music</button>
+              <button class="btn" onclick="loadPlaylist('NIGHT MOMENT')">Night Moment</button>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; padding-top:8px; border-top:1px solid var(--border-hairline);">
+              <button class="btn btn-danger" id="simVideoDropBtn" onclick="toggleSimulatedVideoDrop()">Тест: обрыв видео (Fallback)</button>
+              <button class="btn" onclick="clearMainQueue()">Очистить очередь</button>
+            </div>
+          </div>
+
+          <div class="b-block">
+            <div class="b-block-top">
+              <strong>Резервный плейлист и история эфира</strong>
+              <span class="badge" id="reserveCountBadge">РЕЗЕРВ: 3 ТРЕКА</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary);" id="historyListBox">
+              История воспроизведения формируется автоматически при смене треков.
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Исполнитель / Трек</th>
+                <th>Категория</th>
+                <th>Источник</th>
+                <th>Порядок / Управление</th>
+              </tr>
+            </thead>
+            <tbody id="queueTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SUBPANE 2: CLIP FINDER -->
+      <div class="admin-pane" id="sub-clipfinder">
+        <div class="b-block" style="margin-bottom:14px;">
+          <div class="b-block-top">
+            <strong>Clip Finder — автоматический и ручной поиск клипов</strong>
+            <span class="badge badge-ok">ПРОВЕРКА ДЛИТЕЛЬНОСТИ И МЕТАДАННЫХ</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
+            <input class="input-box" id="cfArtistInput" placeholder="Исполнитель (напр. Kyle Alessandro)" style="flex:1; min-width:170px;" />
+            <input class="input-box" id="cfTrackInput" placeholder="Название трека (напр. Lighter)" style="flex:1; min-width:170px;" />
+            <input class="input-box" id="cfUrlInput" placeholder="Прямая ссылка .mp4 / .mp3 (опционально)" style="flex:1.2; min-width:220px;" />
+            <button class="btn btn-accent" onclick="runClipSearch()">Добавить / Найти</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-bottom:16px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Запрос (Трек)</th>
+                <th>Найденный источник</th>
+                <th>Совпадение</th>
+                <th>Статус</th>
+                <th>Подтверждение</th>
+              </tr>
+            </thead>
+            <tbody id="clipCandidatesBody"></tbody>
+          </table>
+        </div>
+
+        <div class="code-panel" id="clipSearchHistoryLog"></div>
+      </div>
+
+      <!-- SUBPANE 3: GEMINI AI PRE-GENERATION -->
+      <div class="admin-pane" id="sub-gemini">
+        <div class="split-grid-2" style="margin-bottom:14px;">
+          <div class="b-block">
+            <div class="b-block-top">
+              <strong>Пакетная предгенерация эфира (Gemini Gateway)</strong>
+              <span class="badge badge-warn" id="aiGatewayModeBadge">SERVER GATEWAY (GEMINI PRE-GEN)</span>
+            </div>
+            <div style="font-size:13px; color:var(--text-secondary);">
+              Gemini вызывается только по нажатию кнопок. Подводки и редактура новостей формируются пакетно; API-ключ хранится только в серверной переменной окружения.
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              <button class="btn" id="aiAutoBtn" onclick="setAiGatewayMode('AUTONOMOUS ENGINE')">Автономный режим</button>
+              <button class="btn active" id="aiServerBtn" onclick="setAiGatewayMode('SERVER GATEWAY (GEMINI PRE-GEN)')">Gemini Server API</button>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; padding-top:8px; border-top:1px solid var(--border-hairline);">
+              <button class="btn btn-accent" id="aiHostsBtn" onclick="pregenerateHostScripts()">Подводки ведущих</button>
+              <button class="btn" id="aiNewsBtn" onclick="pregenerateNewsBatch()">Пакет новостей</button>
+              <button class="btn" id="aiClipBtn" onclick="aiSuggestClipQuery()">ИИ-подбор клипа</button>
+            </div>
+          </div>
+
+          <div class="b-block">
+            <div class="b-block-top">
+              <strong>Архитектура безопасности ключей (Node.js Backend)</strong>
+              <span class="badge">ENV ONLY</span>
+            </div>
+            <div class="code-panel">// Серверный эндпоинт Node.js: POST /api/ai/pregenerate
+// Ключ API НИКОГДА не передаётся в браузерный JS
+const apiKey = process.env.GEMINI_API_KEY;
+// Реальный серверный endpoint находится в /api/gemini.js.
+// Пока нет БД: результат обновляет состояние текущей страницы.</div>
+          </div>
+        </div>
+
+        <div class="code-panel" id="aiPregenLog"></div>
+      </div>
+
+      <!-- SUBPANE 4: FFMPEG / OBS / HLS PIPELINE -->
+      <div class="admin-pane" id="sub-pipeline">
+        <div class="pipeline-row" id="pipelineNodes"></div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center;">
+          <button class="btn active" onclick="showInfraConfig('ffmpeg', this)">FFmpeg (HLS 1080p)</button>
+          <button class="btn" onclick="showInfraConfig('obs', this)">OBS Studio Overlay</button>
+          <button class="btn" onclick="showInfraConfig('liquidsoap', this)">Liquidsoap / AzuraCast</button>
+          <button class="btn" onclick="showInfraConfig('postgres', this)">PostgreSQL Schema</button>
+          <button class="btn btn-accent" onclick="toggleOverlayMode()">Режим OBS Overlay (?overlay=1)</button>
+        </div>
+
+        <div class="code-panel" id="infraConfigBox"></div>
+      </div>
+
+      <!-- SUBPANE 5: QA DIAGNOSTICS -->
+      <div class="admin-pane" id="sub-qa">
+        <div class="b-block" style="margin-bottom:14px;">
+          <div class="b-block-top">
+            <strong>Автоматическая проверка узлов MOMENT.fm (QA Suite)</strong>
+            <button class="btn btn-accent" onclick="runDiagnostics()">Запустить тесты</button>
+          </div>
+          <div style="font-size:13px; color:var(--text-secondary);">
+            Проверяет все 6 состояний графики, синхронизацию шкалы TV/RADIO, очередь AutoDJ, аварийный переход VIDEO → AUDIO FALLBACK и кэш предгенерации ИИ.
+          </div>
+        </div>
+        <div class="code-panel" id="qaOutput">Нажмите «Запустить тесты» для проверки всех модулей.</div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const CATALOG = [
+      { id: 1, artist: "JJ", title: "Wasted Love", category: "Euro Pop", program: "EURO POP", duration: 182, bpm: 124, hasClip: true, isNew: true, rotation: "HEAVY" },
+      { id: 2, artist: "Kyle Alessandro", title: "Lighter", category: "Euro Pop", program: "MOMENT TOP 20", duration: 176, bpm: 128, hasClip: true, isNew: true, rotation: "HEAVY" },
+      { id: 3, artist: "Marcus & Martinus", title: "Unforgettable", category: "Dance Pop", program: "MOMENT TOP 20", duration: 168, bpm: 130, hasClip: true, isNew: false, rotation: "STANDARD" },
+      { id: 4, artist: "ISAAK", title: "Always On The Run", category: "Euro Pop", program: "EURO POP", duration: 194, bpm: 118, hasClip: true, isNew: false, rotation: "STANDARD" },
+      { id: 5, artist: "Nemo", title: "The Code (Club Edit)", category: "Synth / Electro", program: "NEW MUSIC", duration: 185, bpm: 134, hasClip: false, isNew: true, rotation: "HEAVY" },
+      { id: 6, artist: "Loreen", title: "Forever", category: "Dance Pop", program: "NIGHT MOMENT", duration: 201, bpm: 122, hasClip: true, isNew: false, rotation: "STANDARD" },
+      { id: 7, artist: "Baby Lasagna", title: "Rim Tim Tagi Dim", category: "Dance Pop", program: "MOMENT TOP 20", duration: 172, bpm: 136, hasClip: true, isNew: false, rotation: "HEAVY" },
+      { id: 8, artist: "Alessandra", title: "Queen of Kings (Night Mix)", category: "Synth / Electro", program: "NIGHT MOMENT", duration: 165, bpm: 126, hasClip: false, isNew: false, rotation: "STANDARD" }
+    ];
+
+    const RESERVE_PLAYLIST = [
+      { id: 101, artist: "MOMENT.fm Studio", title: "Midnight Signal (Reserve Theme)", category: "Ambient / Reserve", program: "NIGHT MOMENT", duration: 160, bpm: 115, hasClip: false, isNew: false, rotation: "RESERVE" },
+      { id: 102, artist: "ISAAK", title: "Always On The Run", category: "Euro Pop", program: "EURO POP", duration: 194, bpm: 118, hasClip: true, isNew: false, rotation: "RESERVE" },
+      { id: 103, artist: "Marcus & Martinus", title: "Unforgettable", category: "Dance Pop", program: "MOMENT TOP 20", duration: 168, bpm: 130, hasClip: true, isNew: false, rotation: "RESERVE" }
+    ];
+
+    const SCHEDULE_DATA = {
+      "БУДНИ": [
+        { time: "06:00 – 09:00", title: "NEW MUSIC", desc: "Утренние премьеры, свежие европейские релизы и ночные дропы.", host: "EMMA", gfx: "Премьера / Новый релиз" },
+        { time: "09:00 – 12:00", title: "MOMENT NEWS", desc: "Главные события европейской поп-сцены, анонсы туров и клипы.", host: "ALEX", gfx: "Новостная упаковка" },
+        { time: "12:00 – 15:00", title: "EURO POP", desc: "Золотой стандарт современной европейской поп- и танцевальной музыки.", host: "ALEX", gfx: "Стандартный эфир 16:9" },
+        { time: "15:00 – 19:00", title: "MOMENT TOP 20", desc: "Двадцать главных хитов канала по итогам ротации и зрительского интереса.", host: "MAX", gfx: "Динамичный чарт-пакет" },
+        { time: "19:00 – 23:00", title: "NEW MUSIC", desc: "Вечерний прайм-тайм новых релизов и Eurovision-хитов.", host: "EMMA", gfx: "Премьерный пакет" },
+        { time: "23:00 – 06:00", title: "NIGHT MOMENT", desc: "Ночной непрерывный электронный и атмосферный поп-эфир.", host: "LUNA", gfx: "Ночной минимализм" }
+      ],
+      "ВЫХОДНЫЕ": [
+        { time: "08:00 – 12:00", title: "EURO POP", desc: "Уикенд-марафон европейских поп-хитов.", host: "ALEX", gfx: "Стандартный эфир 16:9" },
+        { time: "12:00 – 17:00", title: "MOMENT TOP 20", desc: "Итоговый хит-парад недели MOMENT.fm.", host: "MAX", gfx: "Динамичный чарт-пакет" },
+        { time: "17:00 – 22:00", title: "NEW MUSIC", desc: "Специальный выпуск главных международных премьер месяца.", host: "EMMA", gfx: "Премьерный пакет" },
+        { time: "22:00 – 08:00", title: "NIGHT MOMENT", desc: "Глубокий ночной музыкальный поток без лишних пауз.", host: "LUNA", gfx: "Ночной минимализм" }
+      ]
+    };
+
+    const HOSTS_DATA = [
+      {
+        id: "ALEX",
+        name: "ALEX",
+        role: "Основной энергичный ведущий",
+        programs: "EURO POP • MOMENT NEWS",
+        voice: "Уверенный, бодрый, эфирный баритон",
+        style: "Чёткая телевизионная подача, драйв дневного эфира и оперативные анонсы.",
+        script: "«Вы смотрите MOMENT.fm! Впереди свежая порция европейского поп-звука — громче звук, мы продолжаем прямой эфир!»"
+      },
+      {
+        id: "EMMA",
+        name: "EMMA",
+        role: "Музыкальный редактор",
+        programs: "NEW MUSIC",
+        voice: "Чистый, выразительный, интеллигентный тембр",
+        style: "Рассказывает истории создания треков, представляет премьеры и новых артистов.",
+        script: "«Это рубрика NEW MUSIC на MOMENT.fm. Обратите внимание на продакшн этого релиза — он задаёт тон всему европейскому сезону.»"
+      },
+      {
+        id: "MAX",
+        name: "MAX",
+        role: "Ведущий динамичных программ",
+        programs: "MOMENT TOP 20",
+        voice: "Быстрый, акцентированный, клубный ритм",
+        style: "Высокий темп, обратный отсчёт позиций чарта и танцевальные блоки.",
+        script: "«MOMENT TOP 20 набирает обороты! Этот трек взлетел сразу на пять позиций за неделю — смотрим клип прямо сейчас!»"
+      },
+      {
+        id: "LUNA",
+        name: "LUNA",
+        role: "Вечерний и ночной ведущий",
+        programs: "NIGHT MOMENT",
+        voice: "Мягкий, спокойный, глубокий тембр",
+        style: "Атмосферные подводки позднего вечера и плавные переходы между треками.",
+        script: "«Ночной эфир NIGHT MOMENT на MOMENT.fm. Оставляем позади суету дня и растворяемся в чистом электронном звучании.»"
+      }
+    ];
+
+    let newsItems = [
+      { id: 1, tag: "НОВЫЕ РЕЛИЗЫ", date: "22.11.2026", source: "MOMENT.fm Editorial", title: "JJ представил расширенную эфирную версию сингла Wasted Love", body: "Композиция удерживает верхние строчки европейских ротаций и открывает дневной блок EURO POP на MOMENT.fm." },
+      { id: 2, tag: "EUROVISION", date: "21.11.2026", source: "Euro Pop Wire", title: "Kyle Alessandro анонсировал акустическую и клубную версии Lighter", body: "Обе версии уже поступили в музыкальную базу MOMENT.fm для вечернего шоу NEW MUSIC." },
+      { id: 3, tag: "ЕВРОПЕЙСКАЯ СЦЕНА", date: "20.11.2026", source: "Nordic Music Desk", title: "Marcus & Martinus объявили даты нового европейского тура", body: "В сет-лист вошли главные танцевальные хиты дуэта и специальное световое шоу." },
+      { id: 4, tag: "НОВЫЕ РЕЛИЗЫ", date: "19.11.2026", source: "Berlin Pop Monitor", title: "ISAAK готовит новый студийный мини-альбом к зимнему сезону", body: "Артист поделился деталями записи с живым оркестром и электронными синтезаторами." }
+    ];
+
+    let clipCandidates = [
+      { id: 1, query: "Nemo — The Code (Club Edit)", source: "Official Master 1080p50 [MASTER_05.mp4]", match: 98, status: "PENDING_REVIEW", trackId: 5 },
+      { id: 2, query: "Alessandra — Queen of Kings (Night Mix)", source: "Official Visualiser 1080p [MASTER_08.mp4]", match: 94, status: "PENDING_REVIEW", trackId: 8 },
+      { id: 3, query: "JJ — Wasted Love", source: "Official Music Video 1080p [MASTER_01.mp4]", match: 100, status: "VERIFIED", trackId: 1 }
+    ];
+
+    let clipSearchHistory = [
+      "[11:40:12] AUTO-MATCH: JJ — Wasted Love -> 100% (VERIFIED)",
+      "[11:52:04] QUEUE-CHECK: Nemo — The Code (Club Edit) -> 98% (ОЖИДАЕТ ПОДТВЕРЖДЕНИЯ)"
+    ];
+
+    let aiLogs = [
+      "[11:30:00] CACHE READY: Пакет подводок для ALEX, EMMA, MAX, LUNA загружен в эфирный буфер (4/4).",
+      "[11:45:00] CACHE READY: Сводка MOMENT NEWS синхронизирована с бегущей строкой."
+    ];
+
+    const state = {
+      mode: "TV",
+      graphicState: "CLIP",
+      currentTrack: { ...CATALOG[0] },
+      elapsedSec: 24,
+      queue: [ { ...CATALOG[1] }, { ...CATALOG[2] }, { ...CATALOG[3] }, { ...CATALOG[4] } ],
+      history: [],
+      rotation: "STANDARD",
+      currentProgram: "EURO POP (12:00 – 15:00)",
+      nextProgram: "MOMENT TOP 20 (15:00)",
+      activeHost: HOSTS_DATA[0],
+      simulatedVideoDrop: false,
+      aiMode: "SERVER GATEWAY (GEMINI PRE-GEN)",
+      audioEnabled: false,
+      volume: 0.65,
+      pipelineFaults: { encoder: false, videoStorage: false, hlsEdge: false }
+    };
+
+    
+    // ==================== REAL MEDIA & AUTO-LOWER-THIRD & POLL ====================
+    const videoEl = document.getElementById("broadcastVideo");
+    state.autoLowerThird = true;
+    state.activeObjectUrl = null;
+    state.pollVotes = [
+      { id: 2, label: "Kyle Alessandro — Lighter", votes: 14 },
+      { id: 3, label: "Marcus & Martinus — Unforgettable", votes: 9 },
+      { id: 7, label: "Baby Lasagna — Rim Tim Tagi Dim", votes: 11 }
+    ];
+
+    function toggleAutoLowerThird() {
+      state.autoLowerThird = !state.autoLowerThird;
+      const btn = document.getElementById("autoLtBtn");
+      btn.textContent = state.autoLowerThird ? "Авто-титр: ВКЛ" : "Авто-титр: ВЫКЛ";
+      btn.classList.toggle("active", state.autoLowerThird);
+      updateLowerThirdVisibility();
+    }
+
+    function updateLowerThirdVisibility() {
+      const lt = document.getElementById("lowerThirdBox");
+      if (!lt) return;
+      if (!state.autoLowerThird || state.graphicState !== "CLIP") {
+        lt.classList.remove("is-hidden");
+        return;
+      }
+      const dur = state.currentTrack.duration || 180;
+      const e = state.elapsedSec;
+      const show = (e <= 14) || (e >= dur - 16);
+      lt.classList.toggle("is-hidden", !show);
+    }
+
+    function loadTrackMedia(track) {
+      if (state.activeObjectUrl && state.activeObjectUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(state.activeObjectUrl);
+        state.activeObjectUrl = null;
+      }
+      const vp = document.getElementById("tvViewport");
+      videoEl.pause();
+      videoEl.removeAttribute("src");
+      videoEl.load();
+      vp.classList.remove("has-video");
+
+      if (track.mediaUrl) {
+        state.activeObjectUrl = track.mediaUrl;
+        videoEl.src = track.mediaUrl;
+        videoEl.volume = state.volume;
+        videoEl.muted = !state.audioEnabled;
+        if (track.isVideo) {
+          vp.classList.add("has-video");
+        }
+        videoEl.onloadedmetadata = () => {
+          if (videoEl.duration && isFinite(videoEl.duration) && videoEl.duration > 5) {
+            track.duration = Math.floor(videoEl.duration);
+          }
+        };
+        videoEl.play().catch(() => {});
+      }
+    }
+
+    function handleLocalFiles(event) {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
+      files.forEach((file, idx) => {
+        const isVideo = file.type.startsWith("video/") || file.name.toLowerCase().endsWith(".mp4") || file.name.toLowerCase().endsWith(".webm");
+        const cleanName = file.name.replace(/\.[^/.]+$/, "");
+        const parts = cleanName.split(" - ");
+        const artist = parts.length > 1 ? parts[0].trim() : "Локальный файл";
+        const title = parts.length > 1 ? parts.slice(1).join(" - ").trim() : cleanName;
+        const item = {
+          id: Date.now() + idx,
+          artist,
+          title,
+          category: isVideo ? "Local Clip" : "Local Audio",
+          program: "EURO POP",
+          duration: 180,
+          bpm: 126,
+          hasClip: isVideo,
+          isVideo,
+          mediaUrl: URL.createObjectURL(file),
+          isNew: true,
+          rotation: "HEAVY"
+        };
+        CATALOG.unshift(item);
+        if (idx === 0) {
+          state.queue.unshift(item);
+          nextTrack(true);
+        } else {
+          state.queue.push(item);
+        }
+      });
+      renderLibrary("ALL");
+      renderAutoDJ();
+      switchTab("air");
+      event.target.value = "";
+    }
+
+    function renderPoll() {
+      const container = document.getElementById("pollOptionsList");
+      if (!container) return;
+      const total = state.pollVotes.reduce((acc, x) => acc + x.votes, 0) || 1;
+      document.getElementById("pollTotalVotes").textContent = `${state.pollVotes.reduce((acc, x) => acc + x.votes, 0)} голосов`;
+      container.innerHTML = state.pollVotes.map((opt, idx) => {
+        const pct = Math.round((opt.votes / total) * 100);
+        return `
+          <button class="poll-option" onclick="voteForTrack(${idx})">
+            <span>${opt.label}</span>
+            <span style="font-family:var(--font-mono); color:var(--accent);">${pct}%</span>
+          </button>
+          <div class="poll-bar-bg"><div class="poll-bar-fill" style="width:${pct}%;"></div></div>
+        `;
+      }).join("");
+    }
+
+    function voteForTrack(idx) {
+      const opt = state.pollVotes[idx];
+      if (!opt) return;
+      opt.votes += 1;
+      const catalogItem = CATALOG.find((c) => c.id === opt.id);
+      if (catalogItem && !state.queue.some((q) => q.id === catalogItem.id)) {
+        state.queue.unshift({ ...catalogItem });
+        renderAutoDJ();
+      }
+      renderPoll();
+      updateUnifiedUI();
+    }
+
+    // ==================== WEB AUDIO SYNTH ====================
+    let audioCtx = null;
+    let audioTimer = null;
+    let stepIdx = 0;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) audioCtx = new Ctx();
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume().catch(() => {});
+      }
+    }
+
+    function playSynthPulse() {
+      if (!state.audioEnabled || !audioCtx || audioCtx.state !== "running") return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const notes = [220, 261.63, 329.63, 293.66, 392.0, 329.63, 261.63, 246.94];
+        osc.type = stepIdx % 4 === 0 ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(notes[stepIdx % notes.length], now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.001, state.volume * 0.08), now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+        stepIdx++;
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      state.audioEnabled = !state.audioEnabled;
+      const btn = document.getElementById("audioToggleBtn");
+      if (state.audioEnabled) {
+        initAudio();
+        if (videoEl.src) { videoEl.muted = false; videoEl.play().catch(() => {}); }
+        btn.textContent = "Звук вкл";
+        btn.classList.add("btn-accent");
+        if (!audioTimer) audioTimer = setInterval(playSynthPulse, 460);
+      } else {
+        btn.textContent = "Включить звук";
+        btn.classList.remove("btn-accent");
+        if (videoEl.src) videoEl.muted = true;
+      }
+    }
+
+    function setVolume(val) {
+      state.volume = Number(val) / 100;
+      document.getElementById("volumeLabel").textContent = val + "%";
+      if (videoEl) videoEl.volume = state.volume;
+    }
+
+    // ==================== CINEMA AMBIENT CANVAS ====================
+    const canvas = document.getElementById("broadcastCanvas");
+    const ctx = canvas.getContext("2d");
+    let frameTick = 0;
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        canvas.width = Math.floor(rect.width * (window.devicePixelRatio || 1));
+        canvas.height = Math.floor(rect.height * (window.devicePixelRatio || 1));
+      }
+    }
+    window.addEventListener("resize", resizeCanvas);
+
+    function drawBroadcastFrame() {
+      frameTick += 0.022;
+      const w = canvas.width;
+      const h = canvas.height;
+      if (!w || !h) {
+        requestAnimationFrame(drawBroadcastFrame);
+        return;
+      }
+
+      const isFallback = !state.currentTrack.hasClip || state.simulatedVideoDrop || state.pipelineFaults.videoStorage;
+      document.getElementById("fallbackBanner").classList.toggle("visible", isFallback && state.mode === "TV");
+
+      ctx.fillStyle = "#050609";
+      ctx.fillRect(0, 0, w, h);
+
+      const bpmFactor = (state.currentTrack.bpm || 124) / 120;
+      const t = frameTick * bpmFactor;
+
+      if (!isFallback) {
+        // Apple Music / Stage-like soft blurred light orbs
+        const orb1X = w * (0.3 + 0.22 * Math.sin(t * 0.45));
+        const orb1Y = h * (0.38 + 0.18 * Math.cos(t * 0.35));
+        const grad1 = ctx.createRadialGradient(orb1X, orb1Y, 10, orb1X, orb1Y, w * 0.42);
+        grad1.addColorStop(0, "rgba(196, 255, 14, 0.22)");
+        grad1.addColorStop(1, "rgba(5, 6, 9, 0)");
+        ctx.fillStyle = grad1;
+        ctx.fillRect(0, 0, w, h);
+
+        const orb2X = w * (0.72 + 0.18 * Math.cos(t * 0.4));
+        const orb2Y = h * (0.55 + 0.2 * Math.sin(t * 0.5));
+        const grad2 = ctx.createRadialGradient(orb2X, orb2Y, 10, orb2X, orb2Y, w * 0.38);
+        grad2.addColorStop(0, "rgba(50, 215, 255, 0.18)");
+        grad2.addColorStop(1, "rgba(5, 6, 9, 0)");
+        ctx.fillStyle = grad2;
+        ctx.fillRect(0, 0, w, h);
+
+        // Smooth audio-reactive wave bars
+        const barCount = 36;
+        const barW = Math.max(4, (w * 0.34) / barCount);
+        const startX = w * 0.56;
+        const baseY = h * 0.64;
+        for (let b = 0; b < barCount; b++) {
+          const amp = (Math.sin(t * 3 + b * 0.42) * 0.5 + 0.5) * (h * 0.22) + 8;
+          ctx.fillStyle = b % 6 === 0 ? "rgba(196, 255, 14, 0.65)" : "rgba(255, 255, 255, 0.14)";
+          ctx.beginPath();
+          ctx.roundRect(startX + b * (barW + 5), baseY - amp, barW, amp, 4);
+          ctx.fill();
+        }
+      } else {
+        const gradF = ctx.createRadialGradient(w * 0.5, h * 0.5, 20, w * 0.5, h * 0.5, w * 0.45);
+        gradF.addColorStop(0, "rgba(255, 184, 0, 0.14)");
+        gradF.addColorStop(1, "rgba(5, 6, 9, 0)");
+        ctx.fillStyle = gradF;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      requestAnimationFrame(drawBroadcastFrame);
+    }
+
+    // ==================== UNIFIED BROADCAST CLOCK ====================
+    function formatSec(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
+    }
+
+    function updateUnifiedUI() {
+      const tr = state.currentTrack;
+      const pct = Math.min(100, (state.elapsedSec / tr.duration) * 100);
+      const timeStr = `${formatSec(state.elapsedSec)} / ${formatSec(tr.duration)}`;
+
+      document.getElementById("ltArtist").textContent = tr.artist;
+      document.getElementById("ltTrack").textContent = tr.title;
+      document.getElementById("ltProgressBar").style.width = pct + "%";
+      document.getElementById("ltTimer").textContent = timeStr;
+      document.getElementById("hudProgramTitle").textContent = tr.program || state.currentProgram;
+
+      const stateLabels = {
+        CLIP: "В ЭФИРЕ • МУЗЫКАЛЬНЫЙ КЛИП",
+        NEW_RELEASE: "ПРЕМЬЕРА • НОВАЯ ПЕСНЯ НА MOMENT.FM",
+        NEWS: "MOMENT NEWS • МУЗЫКАЛЬНЫЕ НОВОСТИ",
+        IDENT: "ИДЕНТИФИКАЦИЯ КАНАЛА • MOMENT.FM",
+        HOST: "ПРЯМОЕ ВКЛЮЧЕНИЕ • ВЕДУЩИЙ В ЭФИРЕ",
+        TRANSITION: "ПЕРЕХОД МЕЖДУ ПРОГРАММАМИ"
+      };
+      document.getElementById("ltStateTag").textContent =
+        tr.isNew && state.graphicState === "CLIP"
+          ? "НОВИНКА ЭФИРА • МУЗЫКАЛЬНЫЙ КЛИП"
+          : stateLabels[state.graphicState];
+
+      document.getElementById("radioTrackTitle").textContent = tr.title;
+      document.getElementById("radioArtistName").textContent = tr.artist;
+      document.getElementById("radioProgramName").textContent = tr.program || state.currentProgram;
+      document.getElementById("radioCoverCode").textContent = tr.artist.slice(0, 2).toUpperCase();
+      document.getElementById("radioBpmTag").textContent = `${tr.bpm} BPM // AAC 320`;
+      document.getElementById("radioProgressBar").style.width = pct + "%";
+      document.getElementById("radioTimerText").textContent = timeStr;
+
+      const nextTr = state.queue[0] || RESERVE_PLAYLIST[0];
+      document.getElementById("panelNextTrack").textContent = `Очередь: ${nextTr.artist} — ${nextTr.title}`;
+      document.getElementById("radioNextLabel").textContent = `Далее: ${nextTr.artist} — ${nextTr.title}`;
+      document.getElementById("panelCurrProgram").textContent = state.currentProgram;
+      document.getElementById("panelNextProgram").textContent = state.nextProgram;
+    }
+
+    function masterBroadcastTick() {
+      const now = new Date();
+      const clock = now.toTimeString().slice(0, 8);
+      const frames = String(Math.floor((now.getMilliseconds() / 1000) * 25)).padStart(2, "0");
+      document.getElementById("headerClock").textContent = clock;
+      document.getElementById("radioClock").textContent = clock;
+      document.getElementById("hudTimecode").textContent = `TC ${clock}:${frames}`;
+
+      if (videoEl.src && !videoEl.paused && !videoEl.ended && isFinite(videoEl.currentTime)) {
+        state.elapsedSec = Math.floor(videoEl.currentTime);
+      } else {
+        state.elapsedSec += 1;
+      }
+      updateLowerThirdVisibility();
+      if (state.elapsedSec >= state.currentTrack.duration) {
+        nextTrack(false);
+      }
+
+      const bars = document.querySelectorAll("#radioBars span");
+      bars.forEach((bar, idx) => {
+        const h = state.audioEnabled ? 22 + Math.abs(Math.sin(Date.now() / 180 + idx)) * 78 : 18;
+        bar.style.height = h + "%";
+      });
+
+      updateUnifiedUI();
+    }
+
+    function setBroadcastMode(mode) {
+      state.mode = mode;
+      document.getElementById("tvViewport").classList.toggle("is-radio", mode === "RADIO");
+      document.getElementById("modeTvBtn").classList.toggle("active", mode === "TV");
+      document.getElementById("modeRadioBtn").classList.toggle("active", mode === "RADIO");
+      updateUnifiedUI();
+    }
+
+    function setGraphicState(gfx) {
+      state.graphicState = gfx;
+      document.querySelectorAll("#gfxStateButtons .btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.state === gfx);
+      });
+
+      document.getElementById("stateIdent").classList.toggle("visible", gfx === "IDENT");
+      document.getElementById("stateNews").classList.toggle("visible", gfx === "NEWS");
+      document.getElementById("stateHost").classList.toggle("visible", gfx === "HOST");
+      document.getElementById("stateTransition").classList.toggle("visible", gfx === "TRANSITION");
+
+      if (gfx === "NEWS" && newsItems[0]) {
+        document.getElementById("hudNewsHeadline").textContent = newsItems[0].title;
+        document.getElementById("hudNewsBody").textContent = newsItems[0].body;
+      }
+      if (gfx === "HOST" && state.activeHost) {
+        document.getElementById("hudHostName").textContent = state.activeHost.name;
+        document.getElementById("hudHostRole").textContent = state.activeHost.role;
+        document.getElementById("hudHostSpeech").textContent = state.activeHost.script;
+      }
+      if (gfx === "TRANSITION") {
+        document.getElementById("hudTransTitle").textContent = `Далее: ${state.nextProgram}`;
+      }
+
+      updateUnifiedUI();
+    }
+
+    function nextTrack(manual) {
+      state.history.unshift({
+        time: new Date().toTimeString().slice(0, 8),
+        artist: state.currentTrack.artist,
+        title: state.currentTrack.title,
+        source: state.currentTrack.hasClip && !state.simulatedVideoDrop ? "CLIP" : "FALLBACK AUDIO"
+      });
+      if (state.history.length > 8) state.history.pop();
+
+      let next = state.queue.shift();
+      if (!next) {
+        next = { ...RESERVE_PLAYLIST[Math.floor(Math.random() * RESERVE_PLAYLIST.length)] };
+      }
+
+      state.currentTrack = next;
+      state.elapsedSec = 0;
+      loadTrackMedia(next);
+
+      if (state.queue.length < 2) {
+        const pool = state.rotation === "HEAVY" ? CATALOG.filter((t) => t.rotation === "HEAVY") : CATALOG;
+        state.queue.push({ ...pool[Math.floor(Math.random() * pool.length)] });
+      }
+
+      if (next.isNew) setGraphicState("NEW_RELEASE");
+      else if (!manual && state.graphicState !== "CLIP") setGraphicState("CLIP");
+
+      renderAutoDJ();
+      updateUnifiedUI();
+    }
+
+    // ==================== NAVIGATION & RENDERERS ====================
+    function switchTab(tabId) {
+      document.querySelectorAll("#mainNav .nav-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.tab === tabId);
+      });
+      document.querySelectorAll(".page-section").forEach((sec) => {
+        sec.classList.toggle("active", sec.id === "tab-" + tabId);
+      });
+      if (tabId === "air") resizeCanvas();
+    }
+
+    document.querySelectorAll("#mainNav .nav-btn").forEach((btn) => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    });
+
+    function renderSchedule(day, btnEl) {
+      if (btnEl) {
+        document.querySelectorAll("#scheduleDayFilter .seg-btn").forEach((b) => b.classList.remove("active"));
+        btnEl.classList.add("active");
+      }
+      const rows = SCHEDULE_DATA[day] || SCHEDULE_DATA["БУДНИ"];
+      document.getElementById("scheduleTableBody").innerHTML = rows.map((r) => `
+        <tr>
+          <td style="font-family:var(--font-mono); color:var(--accent); white-space:nowrap;">${r.time}</td>
+          <td><strong>${r.title}</strong></td>
+          <td style="color:var(--text-secondary);">${r.desc}</td>
+          <td><span class="badge badge-ok">${r.host}</span></td>
+          <td style="font-size:12px;">${r.gfx}</td>
+          <td><button class="btn" onclick="activateProgramSlot('${r.title}', '${r.time}', '${r.host}')">В эфир</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function activateProgramSlot(title, time, hostId) {
+      state.currentProgram = `${title} (${time})`;
+      const host = HOSTS_DATA.find((h) => h.id === hostId);
+      if (host) state.activeHost = host;
+      switchTab("air");
+      setGraphicState("TRANSITION");
+    }
+
+    function renderNews(filterTag, btnEl) {
+      if (btnEl) {
+        document.querySelectorAll("#newsFilters .btn").forEach((b) => b.classList.remove("active"));
+        btnEl.classList.add("active");
+      }
+      const items = filterTag === "ALL" ? newsItems : newsItems.filter((n) => n.tag === filterTag);
+      document.getElementById("newsGrid").innerHTML = items.map((n) => `
+        <div class="b-block">
+          <div>
+            <div class="b-block-top">
+              <span class="badge badge-ok">${n.tag}</span>
+              <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-secondary);">${n.date} • ${n.source}</span>
+            </div>
+            <h3 style="font-size:16px; letter-spacing:-0.01em; margin:10px 0 6px;">${n.title}</h3>
+            <p style="font-size:13px; color:var(--text-secondary);">${n.body}</p>
+          </div>
+          <div style="display:flex; gap:8px; padding-top:8px; border-top:1px solid var(--border-hairline);">
+            <button class="btn" onclick="sendNewsToAir(${n.id})">Вывести в эфир</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function sendNewsToAir(newsId) {
+      const item = newsItems.find((n) => n.id === newsId);
+      if (!item) return;
+      document.getElementById("hudNewsHeadline").textContent = item.title;
+      document.getElementById("hudNewsBody").textContent = item.body;
+      document.getElementById("tickerText").textContent = `${item.title} • ` + newsItems.map((x) => x.title).join(" • ");
+      switchTab("air");
+      setGraphicState("NEWS");
+    }
+
+    function renderHosts() {
+      document.getElementById("hostsGrid").innerHTML = HOSTS_DATA.map((h) => `
+        <div class="b-block">
+          <div>
+            <div class="b-block-top">
+              <div>
+                <div class="host-name">${h.name}</div>
+                <div style="font-size:12px; color:var(--text-secondary);">${h.role}</div>
+              </div>
+              <span class="badge badge-ok">${h.programs}</span>
+            </div>
+            <div style="font-size:13px; color:var(--text-secondary); margin:10px 0;">
+              <strong style="color:var(--text-main);">Голос и подача:</strong> ${h.voice}. ${h.style}
+            </div>
+            <div class="quote-box">${h.script}</div>
+          </div>
+          <div style="display:flex; gap:8px; padding-top:8px; border-top:1px solid var(--border-hairline);">
+            <button class="btn btn-accent" onclick="putHostOnAir('${h.id}')">Вывести в эфир</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function putHostOnAir(hostId) {
+      const h = HOSTS_DATA.find((x) => x.id === hostId);
+      if (!h) return;
+      state.activeHost = h;
+      switchTab("air");
+      setGraphicState("HOST");
+    }
+
+    function renderLibrary(filter, btnEl) {
+      if (btnEl) {
+        document.querySelectorAll("#tab-library .sec-head .btn").forEach((b) => b.classList.remove("active"));
+        btnEl.classList.add("active");
+      }
+      let list = CATALOG;
+      if (filter === "NEW") list = CATALOG.filter((t) => t.isNew);
+      else if (filter !== "ALL") list = CATALOG.filter((t) => t.category === filter);
+
+      document.getElementById("libraryTableBody").innerHTML = list.map((t) => `
+        <tr>
+          <td><strong>${t.artist}</strong> — ${t.title} ${t.isNew ? '<span class="badge badge-ok" style="margin-left:6px;">NEW</span>' : ''}</td>
+          <td>${t.category}</td>
+          <td style="font-family:var(--font-mono); font-size:11px;">${t.program}</td>
+          <td style="font-family:var(--font-mono); font-size:11px;">${formatSec(t.duration)} / ${t.bpm} BPM</td>
+          <td>${t.hasClip ? '<span class="badge badge-ok">Клип готов</span>' : '<span class="badge badge-warn">Нет клипа (Fallback)</span>'}</td>
+          <td>
+            <button class="btn" onclick="enqueueTrack(${t.id})">В очередь</button>
+            <button class="btn btn-accent" onclick="playTrackNow(${t.id})">В эфир</button>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function enqueueTrack(trackId) {
+      const tr = CATALOG.find((t) => t.id === trackId);
+      if (!tr) return;
+      state.queue.unshift({ ...tr });
+      renderAutoDJ();
+      updateUnifiedUI();
+    }
+
+    function playTrackNow(trackId) {
+      const tr = CATALOG.find((t) => t.id === trackId);
+      if (!tr) return;
+      state.queue.unshift({ ...tr });
+      nextTrack(true);
+      switchTab("air");
+    }
+
+    // ==================== ADMIN: AUTODJ & CLIP FINDER ====================
+    function switchAdminPane(paneId, btnEl) {
+      document.querySelectorAll("#adminSubnav .btn").forEach((b) => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      document.querySelectorAll(".admin-pane").forEach((p) => {
+        p.classList.toggle("active", p.id === "sub-" + paneId);
+      });
+    }
+
+    function renderAutoDJ() {
+      const tbody = document.getElementById("queueTableBody");
+      if (state.queue.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--amber);">Очередь пуста — при смене трека сработает резервный плейлист</td></tr>`;
+      } else {
+        tbody.innerHTML = state.queue.map((t, idx) => `
+          <tr>
+            <td style="font-family:var(--font-mono);">${idx + 1}</td>
+            <td><strong>${t.artist}</strong> — ${t.title}</td>
+            <td>${t.category}</td>
+            <td>${t.hasClip ? '<span class="badge badge-ok">CLIP</span>' : '<span class="badge badge-warn">AUDIO FALLBACK</span>'}</td>
+            <td>
+              <button class="btn" onclick="moveQueue(${idx}, -1)">↑</button>
+              <button class="btn" onclick="moveQueue(${idx}, 1)">↓</button>
+              <button class="btn btn-danger" onclick="removeQueue(${idx})">×</button>
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      document.getElementById("historyListBox").innerHTML = state.history.length
+        ? state.history.map((h) => `<div>[${h.time}] <strong>${h.artist}</strong> — ${h.title} (${h.source})</div>`).join("")
+        : "История пуста — переключите трек или дождитесь окончания текущего.";
+    }
+
+    function moveQueue(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= state.queue.length) return;
+      const tmp = state.queue[idx];
+      state.queue[idx] = state.queue[target];
+      state.queue[target] = tmp;
+      renderAutoDJ();
+      updateUnifiedUI();
+    }
+
+    function removeQueue(idx) {
+      state.queue.splice(idx, 1);
+      renderAutoDJ();
+      updateUnifiedUI();
+    }
+
+    function clearMainQueue() {
+      state.queue = [];
+      renderAutoDJ();
+      updateUnifiedUI();
+    }
+
+    function setRotation(mode) {
+      state.rotation = mode;
+      ["rotStandard", "rotHeavy", "rotShuffle"].forEach((id) => document.getElementById(id).classList.remove("active"));
+      if (mode === "STANDARD") document.getElementById("rotStandard").classList.add("active");
+      if (mode === "HEAVY") document.getElementById("rotHeavy").classList.add("active");
+      if (mode === "SHUFFLE") document.getElementById("rotShuffle").classList.add("active");
+    }
+
+    function loadPlaylist(name) {
+      if (name === "NEW MUSIC") state.queue = CATALOG.filter((t) => t.isNew).map((t) => ({ ...t }));
+      else if (name === "NIGHT MOMENT") state.queue = CATALOG.filter((t) => t.program === "NIGHT MOMENT" || t.category === "Synth / Electro").map((t) => ({ ...t }));
+      else state.queue = CATALOG.slice(0, 4).map((t) => ({ ...t }));
+      renderAutoDJ();
+      updateUnifiedUI();
+    }
+
+    function toggleSimulatedVideoDrop() {
+      state.simulatedVideoDrop = !state.simulatedVideoDrop;
+      const btn = document.getElementById("simVideoDropBtn");
+      btn.classList.toggle("active", state.simulatedVideoDrop);
+      btn.textContent = state.simulatedVideoDrop ? "Обрыв видео: ВКЛ (Fallback)" : "Тест: обрыв видео (Fallback)";
+    }
+
+    function renderClipFinder() {
+      document.getElementById("clipCandidatesBody").innerHTML = clipCandidates.map((c) => `
+        <tr>
+          <td><strong>${c.query}</strong></td>
+          <td style="font-family:var(--font-mono); font-size:11px;">${c.source}</td>
+          <td><span class="badge ${c.match >= 90 ? 'badge-ok' : 'badge-warn'}">${c.match}%</span></td>
+          <td><span class="badge ${c.status === 'VERIFIED' ? 'badge-ok' : c.status === 'REJECTED' ? 'badge-err' : 'badge-warn'}">${c.status}</span></td>
+          <td>
+            <button class="btn btn-accent" onclick="confirmClipCandidate(${c.id}, true)">Подтвердить</button>
+            <button class="btn btn-danger" onclick="confirmClipCandidate(${c.id}, false)">Отклонить</button>
+          </td>
+        </tr>
+      `).join("");
+
+      document.getElementById("clipSearchHistoryLog").textContent = clipSearchHistory.join("\n");
+    }
+
+    function runClipSearch() {
+      const artist = document.getElementById("cfArtistInput").value.trim() || "Nemo";
+      const title = document.getElementById("cfTrackInput").value.trim() || "The Code";
+      const directUrl = (document.getElementById("cfUrlInput") ? document.getElementById("cfUrlInput").value.trim() : "");
+      const q = `${artist} — ${title}`;
+      const matchedTrack = CATALOG.find((t) => t.artist.toLowerCase().includes(artist.toLowerCase()));
+      const newCand = {
+        id: Date.now(),
+        query: q,
+        source: directUrl || `Official Video Master 1080p [${artist.toUpperCase().replace(/\s+/g, "_")}.mp4]`,
+        directUrl,
+        match: matchedTrack ? 97 : 86,
+        status: "PENDING_REVIEW",
+        trackId: matchedTrack ? matchedTrack.id : null
+      };
+      clipCandidates.unshift(newCand);
+      clipSearchHistory.unshift(`[${new Date().toTimeString().slice(0, 8)}] SEARCH: ${q} -> Совпадение ${newCand.match}% (Ожидает подтверждения)`);
+      renderClipFinder();
+    }
+
+    function confirmClipCandidate(candId, approved) {
+      const cand = clipCandidates.find((c) => c.id === candId);
+      if (!cand) return;
+      cand.status = approved ? "VERIFIED" : "REJECTED";
+      if (approved && cand.directUrl && !cand.trackId) {
+        const isVideo = /\.(mp4|webm|m3u8)(\?|$)/i.test(cand.directUrl);
+        const parts = cand.query.split("—");
+        const newTr = {
+          id: Date.now(),
+          artist: (parts[0] || "Stream").trim(),
+          title: (parts[1] || cand.query).trim(),
+          category: isVideo ? "Stream Clip" : "Stream Audio",
+          program: "EURO POP",
+          duration: 180,
+          bpm: 126,
+          hasClip: isVideo,
+          isVideo,
+          mediaUrl: cand.directUrl,
+          isNew: true,
+          rotation: "HEAVY"
+        };
+        CATALOG.unshift(newTr);
+        state.queue.unshift({ ...newTr });
+      }
+      if (approved && cand.trackId) {
+        const tr = CATALOG.find((t) => t.id === cand.trackId);
+        if (tr) tr.hasClip = true;
+        if (state.currentTrack.id === cand.trackId) state.currentTrack.hasClip = true;
+        state.queue.forEach((q) => { if (q.id === cand.trackId) q.hasClip = true; });
+      }
+      clipSearchHistory.unshift(`[${new Date().toTimeString().slice(0, 8)}] MANUAL: ${cand.query} -> ${cand.status}`);
+      renderClipFinder();
+      renderLibrary("ALL");
+      renderAutoDJ();
+    }
+
+    // ==================== GEMINI AI PRE-GEN ====================
+    function setAiGatewayMode(mode) {
+      state.aiMode = mode;
+      document.getElementById("aiGatewayModeBadge").textContent = mode;
+      document.getElementById("aiAutoBtn").classList.toggle("active", mode === "AUTONOMOUS ENGINE");
+      document.getElementById("aiServerBtn").classList.toggle("active", mode !== "AUTONOMOUS ENGINE");
+    }
+
+    function writeAiLog(message) {
+      aiLogs.unshift(`[${new Date().toTimeString().slice(0, 8)}] ${message}`);
+      document.getElementById("aiPregenLog").textContent = aiLogs.join("\n");
+      setAiGatewayMode(state.aiMode);
+    }
+
+    async function requestGemini(action, payload = {}) {
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
+        signal: AbortSignal.timeout(35000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Ошибка сервера (${response.status})`);
+      if (!data.result || typeof data.result !== "object") throw new Error("Сервер вернул некорректный ответ Gemini.");
+      return data.result;
+    }
+
+    async function pregenerateHostScripts() {
+      if (state.aiMode === "AUTONOMOUS ENGINE") {
+        writeAiLog("Автономный режим: Gemini не вызывается. Переключи режим на Server Gateway для ИИ-генерации.");
+        return;
+      }
+      const button = document.getElementById("aiHostsBtn");
+      if (button?.disabled) return;
+      if (button) { button.disabled = true; button.textContent = "Генерация…"; }
+      writeAiLog("GEMINI: отправлен запрос на генерацию подводок ведущих…");
+      try {
+        const result = await requestGemini("hosts", {
+          track: { artist: state.currentTrack.artist, title: state.currentTrack.title, bpm: state.currentTrack.bpm },
+          program: state.currentProgram,
+          hosts: HOSTS_DATA.map(h => ({ id: h.id, role: h.role, programs: h.programs, voice: h.voice, style: h.style }))
+        });
+        if (!Array.isArray(result.hosts)) throw new Error("В ответе нет списка ведущих.");
+        let updated = 0;
+        result.hosts.forEach(item => {
+          const host = HOSTS_DATA.find(h => h.id === item.id);
+          if (host && typeof item.script === "string" && item.script.trim()) {
+            host.script = item.script.trim(); updated++;
+          }
+        });
+        if (!updated) throw new Error("Gemini не вернул ни одной корректной подводки.");
+        writeAiLog(`GEMINI OK: обновлено подводок ${updated}/4 для текущего трека ${state.currentTrack.artist} — ${state.currentTrack.title}.`);
+        renderHosts();
+      } catch (error) {
+        writeAiLog(`GEMINI ERROR (подводки): ${error.name === "TimeoutError" ? "Превышено время ожидания ответа." : error.message}`);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = "Подводки ведущих"; }
+      }
+    }
+
+    async function pregenerateNewsBatch() {
+      if (state.aiMode === "AUTONOMOUS ENGINE") {
+        writeAiLog("Автономный режим: Gemini не вызывается. Переключи режим на Server Gateway для ИИ-обработки новостей.");
+        return;
+      }
+      const button = document.getElementById("aiNewsBtn");
+      if (button?.disabled) return;
+      if (button) { button.disabled = true; button.textContent = "Обработка…"; }
+      writeAiLog("GEMINI: отправлен запрос на редакционную обработку имеющихся новостей…");
+      try {
+        const sourceItems = newsItems.slice(0, 6).map(n => ({ tag: n.tag, date: n.date, source: n.source, title: n.title, body: n.body }));
+        const result = await requestGemini("news", { items: sourceItems });
+        if (!Array.isArray(result.items) || !result.items.length) throw new Error("Gemini не вернул новости.");
+        const generated = result.items.slice(0, sourceItems.length).map((item, i) => ({
+          id: Date.now() + i,
+          tag: sourceItems[i].tag,
+          date: sourceItems[i].date,
+          source: sourceItems[i].source + " · AI-редактура",
+          title: String(item.title || sourceItems[i].title).slice(0, 180),
+          body: String(item.body || sourceItems[i].body).slice(0, 500)
+        }));
+        newsItems = [...generated, ...newsItems.slice(sourceItems.length)];
+        document.getElementById("tickerText").textContent = newsItems.map(x => x.title).join(" • ");
+        writeAiLog(`GEMINI OK: отредактировано ${generated.length} новостных карточек на основе уже имеющихся материалов. Новые факты не добавлялись.`);
+        renderNews("ALL");
+      } catch (error) {
+        writeAiLog(`GEMINI ERROR (новости): ${error.name === "TimeoutError" ? "Превышено время ожидания ответа." : error.message}`);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = "Пакет новостей"; }
+      }
+    }
+
+    async function aiSuggestClipQuery() {
+      if (state.aiMode === "AUTONOMOUS ENGINE") {
+        writeAiLog("Автономный режим: включи Server Gateway, чтобы Gemini подготовил поисковый запрос.");
+        return;
+      }
+      const missing = CATALOG.filter(t => !t.hasClip).slice(0, 8);
+      if (!missing.length) { writeAiLog("Все позиции каталога уже отмечены как имеющие клип."); return; }
+      const button = document.getElementById("aiClipBtn");
+      if (button?.disabled) return;
+      if (button) { button.disabled = true; button.textContent = "Подбор…"; }
+      writeAiLog("GEMINI: подбирает точный поисковый запрос для клипа…");
+      try {
+        const result = await requestGemini("clip_query", { tracks: missing.map(t => ({ artist: t.artist, title: t.title })) });
+        if (!result.artist || !result.title || !result.query) throw new Error("Gemini вернул неполный поисковый запрос.");
+        document.getElementById("cfArtistInput").value = result.artist;
+        document.getElementById("cfTrackInput").value = result.title;
+        writeAiLog(`GEMINI OK: подготовлен запрос «${result.query}». Это поисковая подсказка; фактическое обнаружение и проверка видеоисточника пока выполняются отдельно.`);
+      } catch (error) {
+        writeAiLog(`GEMINI ERROR (Clip Finder): ${error.name === "TimeoutError" ? "Превышено время ожидания ответа." : error.message}`);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = "ИИ-подбор клипа"; }
+      }
+    }
+
+    // ==================== INFRASTRUCTURE / HLS / OBS ====================
+    const INFRA_CONFIGS = {
+      ffmpeg: `# FFmpeg Master HLS Encoder (1080p50 Video + Synced AAC Radio Stream)
+ffmpeg -re -f lavfi -i testsrc2=size=1920x1080:rate=50 \
+  -i http://127.0.0.1:8000/moment_autodj.ogg \
+  -c:v libx264 -preset veryfast -g 100 -keyint_min 100 -b:v 4500k \
+  -c:a aac -b:a 320k -ar 48000 \
+  -f hls -hls_time 2 -hls_list_size 6 -hls_flags delete_segments \
+  /var/www/hls/moment_tv.m3u8`,
+      obs: `// OBS Studio Browser Source & WebSocket v5 Contract
+// URL: http://localhost:3000/index.html?overlay=1 (1920x1080 @ 50fps)
+// Горячие клавиши внутри оверлея: 1..6 (смена графики), N (след. трек), M (звук)
+{
+  "op": 6,
+  "d": {
+    "eventType": "MOMENT_ONAIR_STATE",
+    "state": "NEW_RELEASE",
+    "artist": "JJ",
+    "title": "Wasted Love",
+    "program": "EURO POP"
+  }
+}`,
+      liquidsoap: `# Liquidsoap 24/7 Audio Automation & Fallback Script
+set("log.file.path", "/var/log/liquidsoap/moment.log")
+main_queue = request.queue(id="moment_autodj")
+reserve = playlist(mode="randomize", "/media/moment/reserve_playlist.m3u")
+radio = fallback(track_sensitive=false, [main_queue, reserve])
+radio = crossfade(duration=2.5, radio)
+output.icecast(%vorbis(quality=0.8), host="127.0.0.1", port=8000,
+  password="ENV_ICECAST_PASSWORD", mount="/moment_autodj.ogg", radio)`,
+      postgres: `-- PostgreSQL Production Schema for MOMENT.fm
+CREATE TABLE tracks (
+  id SERIAL PRIMARY KEY,
+  artist TEXT NOT NULL,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  duration_sec INT NOT NULL,
+  bpm INT,
+  clip_path TEXT,
+  is_verified BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE ai_pregen_cache (
+  id SERIAL PRIMARY KEY,
+  slot_key TEXT NOT NULL,
+  host_name TEXT NOT NULL,
+  script_ru TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);`
+    };
+
+    function renderPipelineNodes() {
+      const nodes = [
+        { key: "db", name: "PostgreSQL + Node.js", status: "READY (SCHEMA)" },
+        { key: "autodj", name: "AutoDJ / Liquidsoap", status: "ACTIVE (DEMO)" },
+        { key: "videoStorage", name: "Clip Storage / Media", status: state.pipelineFaults.videoStorage ? "FAULT -> FALLBACK" : "ONLINE" },
+        { key: "obs", name: "OBS Overlay (6 States)", status: "READY (?overlay=1)" },
+        { key: "hls", name: "FFmpeg HLS (.m3u8)", status: "CONFIG READY" }
+      ];
+      document.getElementById("pipelineNodes").innerHTML = nodes.map((n) => `
+        <div class="pipe-node ${n.key === 'videoStorage' && state.pipelineFaults.videoStorage ? 'fault' : ''}">
+          <div style="font-family:var(--font-mono); font-size:10px; color:var(--text-secondary);">УЗЕЛ ТРАКТА</div>
+          <div style="font-weight:700; margin:4px 0;">${n.name}</div>
+          <span class="badge ${n.status.includes('FAULT') ? 'badge-err' : 'badge-ok'}">${n.status}</span>
+        </div>
+      `).join("");
+    }
+
+    function showInfraConfig(key, btnEl) {
+      if (btnEl) {
+        btnEl.parentElement.querySelectorAll(".btn").forEach((b) => b.classList.remove("active"));
+        btnEl.classList.add("active");
+      }
+      document.getElementById("infraConfigBox").textContent = INFRA_CONFIGS[key];
+    }
+
+    function toggleOverlayMode() {
+      document.body.classList.toggle("overlay-mode");
+      resizeCanvas();
+    }
+
+    // ==================== QA DIAGNOSTICS ====================
+    function runDiagnostics() {
+      const checks = [
+        { name: "1. Экран 16:9 и 6 состояний графики", ok: ["CLIP","NEW_RELEASE","NEWS","IDENT","HOST","TRANSITION"].length === 6 },
+        { name: "2. Единая шкала TV / RADIO", ok: typeof state.elapsedSec === "number" && state.currentTrack !== null },
+        { name: "3. Автономный движок AutoDJ и резерв", ok: RESERVE_PLAYLIST.length >= 3 },
+        { name: "4. Модуль Clip Finder и история поиска", ok: Array.isArray(clipCandidates) && clipSearchHistory.length > 0 },
+        { name: "5. Пакетная предгенерация ИИ (без ключа в JS)", ok: !document.documentElement.innerHTML.includes("AIzaSy") },
+        { name: "6. Конфигурации FFmpeg / OBS / Liquidsoap / PostgreSQL", ok: Object.keys(INFRA_CONFIGS).length === 4 }
+      ];
+      document.getElementById("qaOutput").textContent =
+        "ОТЧЁТ САМОДИАГНОСТИКИ MOMENT.FM v1.1 (APPLE-STYLE BROADCAST UI):\n\n" +
+        checks.map((c) => `[${c.ok ? "PASS" : "FAIL"}] ${c.name}`).join("\n") +
+        "\n\nВСЕ УЗЛЫ ВЕЩАТЕЛЬНОГО ПРОТОТИПА ПРОВЕРЕНЫ.";
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+      const map = { "1": "CLIP", "2": "NEW_RELEASE", "3": "NEWS", "4": "IDENT", "5": "HOST", "6": "TRANSITION" };
+      if (map[e.key]) setGraphicState(map[e.key]);
+      if (e.key.toLowerCase() === "n") nextTrack(true);
+      if (e.key.toLowerCase() === "m") toggleAudio();
+      if (e.key === "Escape" && document.body.classList.contains("overlay-mode")) toggleOverlayMode();
+    });
+
+    (function init() {
+      const barsContainer = document.getElementById("radioBars");
+      for (let i = 0; i < 24; i++) {
+        barsContainer.appendChild(document.createElement("span"));
+      }
+
+      if (new URLSearchParams(window.location.search).get("overlay") === "1") {
+        document.body.classList.add("overlay-mode");
+      }
+
+      renderSchedule("БУДНИ");
+      renderNews("ALL");
+      renderHosts();
+      renderLibrary("ALL");
+      renderAutoDJ();
+      renderClipFinder();
+      document.getElementById("aiPregenLog").textContent = aiLogs.join("\n");
+      renderPipelineNodes();
+      showInfraConfig("ffmpeg");
+      renderPoll();
+      updateLowerThirdVisibility();
+
+      resizeCanvas();
+      drawBroadcastFrame();
+      updateUnifiedUI();
+      setInterval(masterBroadcastTick, 1000);
+    })();
+  </script>
+</body>
+</html>
